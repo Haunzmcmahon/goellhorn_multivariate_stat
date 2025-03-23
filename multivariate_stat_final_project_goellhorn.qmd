@@ -1,11 +1,94 @@
 ---
-title: "multivariate_stat_final_project_goellhorn"
+title: "project"
+format: html
+editor: visual
 ---
+```{r}
+#| echo: true
+#| 
+library(tidyverse)
+```
 
-## Quarto
+##Setting up our relevante Dataset:
 
-Quarto enables you to weave together content and executable code into a finished document. To learn more about Quarto see <https://quarto.org>.
+- y = werr 
+
+-- werr: construction year of the building (1. . . before 1919, 2. . . 1919-1944, 3. . . 1945-1960, 4. . . 1961-1970,
+5. . . 1971-1980, 6. . . 1981-1990, 7. . . 1991-2000, 8. . . after 2000)
+
+- subset = Styria
+```{r}
+data_loc = "mc.csv"
+data <- read.csv(data_loc)
+summarise(data)
+#-3 values represent null values so we assing NA
+data[data == -3] <- NA
+#subset = styria -> NUTS2 = AT22
+data <- data |> filter(xnuts2 == 22)
+#filtering only for the relevant Predictors
+data <- data |>select(werr, dseitz, dstd, kjahr, xanzkind, xminalt, balt5, bsex, 
+         bfst, xbstaat, xbgeblan, xhatlevel, xeinw, xlfi,xpatch)
+data
+
+```
+```{r}
+library(dplyr)
+
+data <- data %>%
+    mutate(
+    werr = factor(werr, levels = 1:8, 
+                  labels = c("before 1919", "1919-1944", "1945-1960", 
+                             "1961-1970", "1971-1980", "1981-1990", 
+                             "1991-2000", "after 2000")),
+    
+    balt5 = factor(balt5, levels = 0:15, 
+                   labels = c("0-14", "15-19", "20-24", "25-29", "30-34", "35-39", 
+                              "40-44", "45-49", "50-54", "55-59", "60-64", "65-69", 
+                              "70-74", "75-79", "80-84", "85+")),
+    
+    bsex = factor(bsex, levels = c(1, 2), labels = c("Male", "Female")),
+    
+    bfst = factor(bfst, levels = 1:4, 
+                  labels = c("Single", "Married", "Widowed", "Divorced")),
+    
+    xbstaat = factor(xbstaat, levels = 1:7, 
+                     labels = c("Austria", "EU15 without Austria", "EU15 10 new members", 
+                                "Former Yugoslavia", "Turkey", "Other countries", "Bulgaria/Romania")),
+    
+    xbgeblan = factor(xbgeblan, levels = 1:7, 
+                      labels = c("Austria", "EU15 without Austria", "EU15 10 new members", 
+                                 "Former Yugoslavia", "Turkey", "Other countries", "Bulgaria/Romania")),
+    
+    xhatlevel = factor(xhatlevel, levels = c(0, 11, 21, 22, 30, 31, 32, 41, 42, 43, 51, 52, 60, 99), 
+                       labels = c("ISCED 0/1", "ISCED 1", "ISCED 2", "ISCED 3c <2 years", 
+                                  "ISCED 3", "ISCED 3c 2+ years", "ISCED 3a, b", "ISCED 4a, b", 
+                                  "ISCED 4c", "ISCED 4", "ISCED 5b", "ISCED 5a", "ISCED 6", "Not applicable")),
+    
+    xeinw = factor(xeinw, levels = 1:4, 
+                   labels = c("up to 2000", "2001-10000", "10001-100000", "100001+")),
+    
+    xlfi = factor(xlfi, levels = 1:3, 
+                  labels = c("Employed", "Unemployed", "Not in labor force")),
+    
+    xpatch = factor(xpatch, levels = c(1, 2), labels = c("Yes", "No"))
+  )
+data
+
+```
+
+removing NAs
+
 
 ```{r}
-1 + 1
+data <- na.omit(data)
+data.numeric <-c("dseitz","dstd","kjahr","xanzkind")
+data.polytomous <- c("balt5","bfst","xbstaat","xbgeblan","xhatlevel","xeinw","xlfi")
+data.categorical <- c("balt5","bsex","bfst","xbstaat","xbgeblan","xhatlevel","xeinw","xlfi","xpatch")
+
+data
+
 ```
+```{r}
+
+```
+
