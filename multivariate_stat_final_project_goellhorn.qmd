@@ -87,9 +87,14 @@ data.polytomous <- c("balt5","bfst","xbstaat","xbgeblan","xhatlevel","xeinw","xl
 data.categorical <- c("balt5","bsex","bfst","xbstaat","xbgeblan","xhatlevel","xeinw","xlfi","xpatch")
 
 data
+```
+
+
+```{r}
+print('test')
 
 ```
 
 ```{r}
-print('test')
+
 ```
