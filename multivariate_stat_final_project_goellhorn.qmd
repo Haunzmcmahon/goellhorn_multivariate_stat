@@ -3,6 +3,7 @@ title: "project"
 format: html
 editor: visual
 ---
+
 ```{r}
 #| echo: true
 #| 
@@ -11,12 +12,12 @@ library(tidyverse)
 
 ##Setting up our relevante Dataset:
 
-- y = werr 
+-   y = werr
 
--- werr: construction year of the building (1. . . before 1919, 2. . . 1919-1944, 3. . . 1945-1960, 4. . . 1961-1970,
-5. . . 1971-1980, 6. . . 1981-1990, 7. . . 1991-2000, 8. . . after 2000)
+-- werr: construction year of the building (1. . . before 1919, 2. . . 1919-1944, 3. . . 1945-1960, 4. . . 1961-1970, 5. . . 1971-1980, 6. . . 1981-1990, 7. . . 1991-2000, 8. . . after 2000)
 
-- subset = Styria
+-   subset = Styria
+
 ```{r}
 data_loc = "mc.csv"
 data <- read.csv(data_loc)
@@ -31,6 +32,7 @@ data <- data |>select(werr, dseitz, dstd, kjahr, xanzkind, xminalt, balt5, bsex,
 data
 
 ```
+
 ```{r}
 library(dplyr)
 
@@ -78,7 +80,6 @@ data
 
 removing NAs
 
-
 ```{r}
 data <- na.omit(data)
 data.numeric <-c("dseitz","dstd","kjahr","xanzkind")
@@ -89,8 +90,11 @@ data
 ```
 
 
-
 ```{r}
-TESTING CHANGE
+print('test')
+
 ```
 
+```{r}
+
+```
