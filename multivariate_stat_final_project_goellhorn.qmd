@@ -28,11 +28,12 @@ library(ggpubr)   # For boxplots    # For normality tests and transformations
 library(ggthemes) # For better themes
 library(kableExtra)
 library(GGally)
+library(vcd)
 ```
 # Introduction
 fgfgfgfg
 
-# Setting up our relevante Dataset:
+# Setting up our relevant dataset:
 
 ```{r}
 data_loc = "mc.csv"
@@ -151,7 +152,7 @@ plot_numeric_variable <- function(data, column_name, target_variable,plot_title)
 
 ### dseitz: working in the current job since. . . (in months)
 ```{r}
-summary(data$dseitz)
+summary(data$seitz)
 sd(data$dseitz)
 ```
 
@@ -400,6 +401,82 @@ plot_numeric_variable_with_transformation(data,"dstd","werr")
 plot_numeric_variable_with_transformation(temp_data,"dstd","werr")
 
 ```
+
+## Categorical Variables
+
+```{r}
+# Bar plot of age group distribution
+ggplot(data, aes(x = balt5)) +
+  geom_bar(fill = "steelblue") +
+  labs(title = "Distribution of Age Groups",
+       x = "Age Group",
+       y = "Count") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))  # Rotate labels for readability
+
+
+```
+
+```{r}
+summary(data$balt5)
+#dropping levels without any entries from the dataset
+data$balt5 <- droplevels(data$balt5)
+summary(data$balt5)
+```
+```{r}
+ggplot(data, aes(x = balt5, fill = werr)) +
+  geom_bar(position = "fill") +  # Stacked proportionally
+  scale_fill_viridis_d(option = "plasma") +  # Gradual color transition
+  labs(title = "Distribution of Age Groups by Construction Period",
+       x = "Age Group",
+       y = "Proportion",
+       fill = "Construction Period") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))  # Rotate labels for readability
+
+```
+
+
+
+
+```{r}
+# Create a clustered bar chart for 'bsex' and 'werr'
+ggplot(data, aes(x = bsex, fill = werr)) +
+  geom_bar(position = "dodge") +  # Clustered bar chart
+  scale_fill_viridis_d(option = "plasma") +  # Gradual color scale
+  labs(title = "Construction Period Distribution by Gender",
+       x = "Gender",
+       y = "Count",
+       fill = "Construction Period") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 0, hjust = 0.5))  # Horizontal labels for clarity
+
+```
+
+```{r}
+# Create a contingency table of gender (bsex) and construction period (werr)
+contingency_table_gender <- table(data$bsex, data$werr)
+
+print(contingency_table_gender)
+
+# Perform the Chi-square test
+chi_square_test <- chisq.test(contingency_table)
+
+# View the result
+print(chi_square_test)
+
+```
+p-value = 0.9221: Since the p-value is much larger than the common significance level of 0.05,the construction period distribution is not significantly different between males and females in your dataset.
+
+```{r}
+# Remove rows and columns with zero counts
+contingency_table_bfst_clean <- contingency_table_bfst[rowSums(contingency_table_bfst) > 0, 
+                                                       colSums(contingency_table_bfst) > 0]
+
+print(contingency_table_bfst_clean)
+mosaic(contingency_table_bfst_clean, shade = TRUE, legend = TRUE)
+```
+
 
 2.1.1 Introduction \[20\]
 
