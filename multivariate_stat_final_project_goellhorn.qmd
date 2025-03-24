@@ -1,40 +1,50 @@
 ---
 title: "project"
-format: html
+format:
+  pdf:
+    toc: true
+    number-sections: true
+    colorlinks: true
 editor: visual
+execute: 
+  warning: false
+  message: false
 ---
 
+{{< pagebreak >}}
 ```{r}
 #| echo: true
-#| 
+#| output: false
 library(tidyverse)
+library(ggplot2)
+library(reshape2)
+library(dplyr)
+library(tidyr)
+library(MASS)  # For Box-Cox
+library(moments)  # For skewness/kurtosis
+library(ggfortify)
+library(viridis)  # For a professional color palette
+library(ggpubr)   # For boxplots    # For normality tests and transformations
+library(ggthemes) # For better themes
+library(kableExtra)
+library(GGally)
 ```
+# Introduction
+fgfgfgfg
 
-##Setting up our relevante Dataset:
-
--   y = werr
-
--- werr: construction year of the building (1. . . before 1919, 2. . . 1919-1944, 3. . . 1945-1960, 4. . . 1961-1970, 5. . . 1971-1980, 6. . . 1981-1990, 7. . . 1991-2000, 8. . . after 2000)
-
--   subset = Styria
+# Setting up our relevante Dataset:
 
 ```{r}
 data_loc = "mc.csv"
 data <- read.csv(data_loc)
-summarise(data)
 #-3 values represent null values so we assing NA
 data[data == -3] <- NA
 #subset = styria -> NUTS2 = AT22
 data <- data |> filter(xnuts2 == 22)
 #filtering only for the relevant Predictors
-data <- data |>select(werr, dseitz, dstd, kjahr, xanzkind, xminalt, balt5, bsex, 
-         bfst, xbstaat, xbgeblan, xhatlevel, xeinw, xlfi,xpatch)
-data
-
-```
-
-```{r}
-library(dplyr)
+data <- data |>dplyr::select(werr, dseitz, dstd, kjahr, xanzkind, xminalt,
+            balt5, bsex,bfst, xbstaat, xbgeblan, xhatlevel, xeinw, xlfi,xpatch)
+head(data)
 
 data <- data %>%
     mutate(
@@ -74,27 +84,329 @@ data <- data %>%
     
     xpatch = factor(xpatch, levels = c(1, 2), labels = c("Yes", "No"))
   )
-data
-
-```
-
-removing NAs
-
-```{r}
 data <- na.omit(data)
+
+head(data)
+```
+```{r}
 data.numeric <-c("dseitz","dstd","kjahr","xanzkind")
 data.polytomous <- c("balt5","bfst","xbstaat","xbgeblan","xhatlevel","xeinw","xlfi")
 data.categorical <- c("balt5","bsex","bfst","xbstaat","xbgeblan","xhatlevel","xeinw","xlfi","xpatch")
-
-data
 ```
+{{< pagebreak >}}
 
+# Descriptice Analysis
+
+## Numeric Variables
 
 ```{r}
-print('test')
+# Load required libraries
+library(ggplot2)
+library(ggpubr)
+
+# Define the function
+plot_numeric_variable <- function(data, column_name, target_variable,plot_title) {
+  
+  # Histogram with density line
+  hist_plot <- ggplot(data, aes_string(x = column_name)) +
+    geom_histogram(aes(y = ..density..), bins = 30) +
+    geom_density() +
+    labs(x = "Data", y = "Density") +
+    ggtitle("Histogram") +
+    theme_grey() +
+    scale_colour_grey()
+  
+  # Boxplot
+  boxplot <- ggplot(data, aes_string(y = column_name)) +
+    geom_boxplot() +
+    xlim(-1, 1) +
+    labs(y = "Data") +
+    ggtitle("Boxplot") +
+    theme_grey() +
+    scale_colour_grey() +
+    scale_fill_grey()
+  
+  # Relationship between the numeric variable and the categorical target variable
+  relationship_plot <- ggplot(data, aes_string(x = target_variable, y = column_name)) +
+    geom_boxplot() +
+    labs(x = target_variable, y = column_name) +
+    ggtitle("relationship with target werr") +
+    theme_grey() +
+    scale_colour_grey() +
+    scale_fill_grey()
+  
+  # Arrange all three plots in one row
+  plot <- ggarrange(hist_plot, boxplot, relationship_plot, ncol = 3, nrow = 1, widths = c(0.5,0.2,1))
+  
+  # Add title to the combined plot
+  plot_with_title <- annotate_figure(plot, 
+                                     top = text_grob(paste(plot_title, target_variable), 
+                                                     face = "bold", size = 14))
+  
+  # Return the plot with title
+  return(plot_with_title)
+}
 
 ```
 
+### dseitz: working in the current job since. . . (in months)
+```{r}
+summary(data$dseitz)
+sd(data$dseitz)
+```
+
+```{r fig.width=11.7, fig.height=8.3/3, out.width="100%", dpi=300}
+#|warning: false
+#|
+plot_numeric_variable(data, "dseitz","werr","dseitz: working in the current job since. . . (in months)")
+#plot_numeric_variable(data, "dstd","werr","dstd: normal weekly working hours")
+#plot_numeric_variable(data, "kjahr","werr","kjahr: years since completing the highest level of education")
+#plot_numeric_variable(data, "xanzkind","werr","xanzkind: number of children under 18 in the family")
+#plot_numeric_variable(data, "xminalt","werr","age of youngest child in the family (in years)")
+
+```
+The histogram shows that the variable follows a right-skewed distribution and has a high spread.
+Trough the boxplot we see that most values are between 0 and 200 with some outliers above 400.
+The box plot categorized by the buildings-Year shows that the distribution of dseitz differs across the categories.
+Additionally we see some outliers, but none of the seem to strongly influence the mean of the category, except 1919-1944 which shows a mean skewed towards the outlier.
+
+The skeweness and the different distributions throughout the categories might indicate that a transformation would help to conform more to a normal-distribution.
+
+```{r fig.width=11.7, fig.height=8.3/2, out.width="100%", dpi=300}
+#| echo: false
+# Load required libraries
+library(ggplot2)
+library(ggpubr)
+
+# Define the function to compare transformations
+plot_numeric_variable_with_transformation <- function(data, column_name, target_variable) {
+  
+  # Original Histogram with density line
+  hist_plot_original <- ggplot(data, aes_string(x = column_name)) +
+    geom_histogram(aes(y = ..density..), bins = 30) +
+    geom_density() +
+    labs(x = "Data", y = "Density (Original)") +
+    theme_grey() +
+    scale_colour_grey()
+  
+  # Original Boxplot
+  boxplot_original <- ggplot(data, aes_string(y = column_name)) +
+    geom_boxplot() +
+    xlim(-1, 1) +
+    labs(y = "Data (Original)") +
+    theme_grey() +
+    scale_colour_grey() +
+    scale_fill_grey()
+
+  # Apply transformation (sqrt in this case)
+  data_transformed <- data
+  data_transformed[[paste0(column_name, "_sqrt")]] <- sqrt(data[[column_name]])
+
+  # Transformed Histogram with density line
+  hist_plot_transformed <- ggplot(data_transformed, aes_string(x = paste0(column_name, "_sqrt"))) +
+    geom_histogram(aes(y = ..density..), bins = 30) +
+    geom_density() +
+    labs(x = "Data", y = "Density (Transformed)") +
+    theme_grey() +
+    scale_colour_grey()
+
+  # Transformed Boxplot
+  boxplot_transformed <- ggplot(data_transformed, aes_string(y = paste0(column_name, "_sqrt"))) +
+    geom_boxplot() +
+    xlim(-1, 1) +
+    labs(y = "Data (Transformed)") +
+    theme_grey() +
+    scale_colour_grey() +
+    scale_fill_grey()
+
+  # Relationship Plot (Original)
+  relationship_plot_original <- ggplot(data, aes_string(x = target_variable, y = column_name)) +
+    geom_boxplot() +
+    labs(x = target_variable, y = column_name) +
+    theme_grey() +
+    scale_colour_grey() +
+    scale_fill_grey()
+
+  # Relationship Plot (Transformed)
+  relationship_plot_transformed <- ggplot(data_transformed, aes_string(x = target_variable, y = paste0(column_name, "_sqrt"))) +
+    geom_boxplot() +
+    labs(x = target_variable, y = paste0(column_name, " (Transformed)")) +
+    theme_grey() +
+    scale_colour_grey() +
+    scale_fill_grey()
+
+  # Arrange all six plots in a grid (before and after transformation, both distributions and relationships)
+
+  plot <- ggarrange(
+    hist_plot_original,boxplot_original,relationship_plot_original,
+    hist_plot_transformed,boxplot_transformed,relationship_plot_transformed,
+    ncol = 3, nrow = 2,widths = c(0.5,0.5,1)
+  )
+  
+  # Add title to the combined plot
+  plot_with_title <- annotate_figure(plot, 
+    top = text_grob(paste("Comparison of Original and Transformed (sqrt) Data",column_name), 
+    face = "bold", size = 14,))
+
+  # Return the plot with title
+  return(plot_with_title)
+}
+
+```
+```{r fig.width=11.7, fig.height=8.3/2, out.width="100%", dpi=300}
+plot_numeric_variable_with_transformation(data,"dseitz","werr")
+# Perform Shapiro-Wilk test before transformation
+shapiro_before <- shapiro.test(data$dseitz)
+data_sqrt <- sqrt(data$dseitz)
+shapiro_after <- shapiro.test(data_sqrt)
+
+# Create a formatted table of test results
+shapiro_results <- data.frame(
+  Test = c("Original Data", "Square Root Transformed"),
+  W_Statistic = c(shapiro_before$statistic, shapiro_after$statistic),
+  P_Value = c(shapiro_before$p.value, shapiro_after$p.value)
+)
+kable(shapiro_results, caption = "Shapiro-Wilk Normality Test Results", digits = 5)
+```
+After applying the 
 ```{r}
 
+pair_data <- data[,data.numeric]
+ggpairs(pair_data,
+        lower = list(continuous = "smooth"), # Smoothed scatterplots on the lower panel
+        diag = list(continuous = "densityDiag"), # Density plots on the diagonal
+        upper = list(continuous = "cor")) # Add correlation coefficients on the upper panel
 ```
+
+
+#### **Examine Outliers**
+
+```{r fig.width=11.7, fig.height=8.3/2, out.width="100%", dpi=300}
+#| echo: false
+# Load required libraries
+library(ggplot2)
+library(ggpubr)
+
+# Define the function to compare transformations
+plot_numeric_variable_with_transformation <- function(data, column_name, target_variable) {
+  
+  # Original Histogram with density line
+  hist_plot_original <- ggplot(data, aes_string(x = column_name)) +
+    geom_histogram(aes(y = ..density..), bins = 30) +
+    geom_density() +
+    labs(x = "Data", y = "Density (Original)") +
+    theme_grey() +
+    scale_colour_grey()
+  
+  # Original Boxplot
+  boxplot_original <- ggplot(data, aes_string(y = column_name)) +
+    geom_boxplot() +
+    xlim(-1, 1) +
+    labs(y = "Data (Original)") +
+    theme_grey() +
+    scale_colour_grey() +
+    scale_fill_grey()
+
+  # Apply transformation (sqrt in this case)
+  data_transformed <- data
+  data_transformed[[paste0(column_name, "_sqrt")]] <- sqrt(data[[column_name]])
+
+  # Transformed Histogram with density line
+  hist_plot_transformed <- ggplot(data_transformed, aes_string(x = paste0(column_name, "_sqrt"))) +
+    geom_histogram(aes(y = ..density..), bins = 30) +
+    geom_density() +
+    labs(x = "Data", y = "Density (Transformed)") +
+    theme_grey() +
+    scale_colour_grey()
+
+  # Transformed Boxplot
+  boxplot_transformed <- ggplot(data_transformed, aes_string(y = paste0(column_name, "_sqrt"))) +
+    geom_boxplot() +
+    xlim(-1, 1) +
+    labs(y = "Data (Transformed)") +
+    theme_grey() +
+    scale_colour_grey() +
+    scale_fill_grey()
+
+  # Relationship Plot (Original)
+  relationship_plot_original <- ggplot(data, aes_string(x = target_variable, y = column_name)) +
+    geom_boxplot() +
+    labs(x = target_variable, y = column_name) +
+    theme_grey() +
+    scale_colour_grey() +
+    scale_fill_grey()
+
+  # Relationship Plot (Transformed)
+  relationship_plot_transformed <- ggplot(data_transformed, aes_string(x = target_variable, y = paste0(column_name, "_sqrt"))) +
+    geom_boxplot() +
+    labs(x = target_variable, y = paste0(column_name, " (Transformed)")) +
+    theme_grey() +
+    scale_colour_grey() +
+    scale_fill_grey()
+
+  # Arrange all six plots in a grid (before and after transformation, both distributions and relationships)
+
+  plot <- ggarrange(
+    hist_plot_original,boxplot_original,relationship_plot_original,
+    hist_plot_transformed,boxplot_transformed,relationship_plot_transformed,
+    ncol = 3, nrow = 2,widths = c(0.5,0.5,1)
+  )
+  
+  # Add title to the combined plot
+  plot_with_title <- annotate_figure(plot, 
+    top = text_grob(paste("Comparison of Original and Transformed (sqrt) Data",column_name), 
+    face = "bold", size = 14,))
+
+  # Return the plot with title
+  return(plot_with_title)
+}
+
+```
+
+```{r fig.width=11.7, fig.height=8.3/2, out.width="100%", dpi=300}
+plot_numeric_variable_with_transformation(data,"dseitz","werr")
+plot_numeric_variable_with_transformation(data,"dstd","werr")
+plot_numeric_variable_with_transformation(data,"kjahr","werr")
+plot_numeric_variable_with_transformation(data,"xanzkind","werr")
+```
+
+#### **Consider Transformations for Normality**
+
+
+```{r fig.width=11.7, fig.height=8.3/2, out.width="100%", dpi=300}
+# Function to remove outliers and compare distributions
+remove_outliers_IQR <- function(data, column_name) {
+  
+  # Step 1: Identify Outliers using IQR
+  Q1 <- quantile(data[[column_name]], 0.25)
+  Q3 <- quantile(data[[column_name]], 0.75)
+  IQR <- Q3 - Q1
+  lower_bound <- Q1 - 1.5 * IQR
+  upper_bound <- Q3 + 1.5 * IQR
+  
+  # Step 2: Create a new column 'is_outlier' to indicate outliers
+  data$is_outlier <- ifelse(data[[column_name]] < lower_bound | data[[column_name]] > upper_bound, TRUE, FALSE)
+  
+  # Step 3: Remove the outliers by filtering the rows where 'is_outlier' is FALSE
+  data_no_outliers <- data[data$is_outlier == FALSE, ]
+  
+  # Step 4: Return the dataset without outliers (with the 'is_outlier' column still present)
+  return(data_no_outliers)
+}
+
+temp_data <- remove_outliers_IQR(data, "dstd")
+temp_data
+plot_numeric_variable_with_transformation(data,"dstd","werr")
+plot_numeric_variable_with_transformation(temp_data,"dstd","werr")
+
+```
+
+2.1.1 Introduction \[20\]
+
+• Formulate research questions (see chapter 2.4.1 of the Meyer/Wurzer script) and research hypotheses, based on the predictors you selected
+
+• Motivate the selection of the predictors - what was the reason for choosing them? • Describe starting point and objectives of your analysis • State the regression method you will use for your analysis (binary logistic, ordinal logistic, Poisson, . . . ) and justify your decision
+
+2.1.2 Data collection \[10\] • Type of survey; facts concerning the execution of the survey (period etc.) ????? • Description of the data set/operationalization (type of sample, sample size, variables, scale levels, missing values etc.) • Data preparation (missing value treatment, transformations, . . . )
+
+2.1.3 Descriptive analysis of the sample \[70\] • Descriptive analysis of the analyzed variable(s) – Diagrams, numerical measures, tables, . . . – All statistics have to be commented, in particular diagrams! – Are there any distinctive features? (e.g., group differences, trends, outliers, . . . ) • In detail, the following plots have to be produced: – Univariate visualizations of all variables – Bivariate relationships between predictors and response to show the influence of the former on the latter – Joint influences of all possible pairs of predictors on the response to show potential interactions (exception: the interaction between the two metric variables doesn’t have to be visualized) • Summary of the descriptive analysis. Based on these descriptive findings, segue to the analysis of the questions about the population
