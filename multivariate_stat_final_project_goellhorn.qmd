@@ -31,7 +31,6 @@ library(GGally)
 library(vcd)
 ```
 # Introduction
-fgfgfgfg
 
 # Setting up our relevant dataset:
 
@@ -89,6 +88,7 @@ data <- na.omit(data)
 
 head(data)
 ```
+
 ```{r}
 data.numeric <-c("dseitz","dstd","kjahr","xanzkind")
 data.polytomous <- c("balt5","bfst","xbstaat","xbgeblan","xhatlevel","xeinw","xlfi")
@@ -101,10 +101,8 @@ data.categorical <- c("balt5","bsex","bfst","xbstaat","xbgeblan","xhatlevel","xe
 ## Numeric Variables
 
 ```{r}
-# Load required libraries
-library(ggplot2)
-library(ggpubr)
-
+#| echo: false
+#| output: false
 # Define the function
 plot_numeric_variable <- function(data, column_name, target_variable,plot_title) {
   
@@ -137,7 +135,7 @@ plot_numeric_variable <- function(data, column_name, target_variable,plot_title)
     scale_fill_grey()
   
   # Arrange all three plots in one row
-  plot <- ggarrange(hist_plot, boxplot, relationship_plot, ncol = 3, nrow = 1, widths = c(0.5,0.2,1))
+  plot <- ggarrange(hist_plot, boxplot, relationship_plot, ncol = 3, nrow = 1, widths = c(0.5,0.3,1))
   
   # Add title to the combined plot
   plot_with_title <- annotate_figure(plot, 
@@ -155,19 +153,17 @@ plot_numeric_variable <- function(data, column_name, target_variable,plot_title)
 summary(data$seitz)
 sd(data$dseitz)
 ```
-
+Spread & Variability: Ranges from 0 to 469, with a high standard deviation (117.17), indicating significant dispersion.
+Central Tendency: Median = 95.5, Mean = 127.6 (higher than the median), suggesting right-skewness.
+Quartiles: Q1 = 29.5, Q3 = 187.5, with a large IQR (158), showing a wide spread.
+Shape: The high max (469) and right-skewed distribution suggest potential outliers.
 ```{r fig.width=11.7, fig.height=8.3/3, out.width="100%", dpi=300}
 #|warning: false
-#|
-plot_numeric_variable(data, "dseitz","werr","dseitz: working in the current job since. . . (in months)")
-#plot_numeric_variable(data, "dstd","werr","dstd: normal weekly working hours")
-#plot_numeric_variable(data, "kjahr","werr","kjahr: years since completing the highest level of education")
-#plot_numeric_variable(data, "xanzkind","werr","xanzkind: number of children under 18 in the family")
-#plot_numeric_variable(data, "xminalt","werr","age of youngest child in the family (in years)")
-
+plot_numeric_variable(data,
+  "dseitz","werr","dseitz: working in the current job since. . . (in months)")
 ```
 The histogram shows that the variable follows a right-skewed distribution and has a high spread.
-Trough the boxplot we see that most values are between 0 and 200 with some outliers above 400.
+Through the boxplot we see that most values are between 0 and 200 with some outliers above 400.
 The box plot categorized by the buildings-Year shows that the distribution of dseitz differs across the categories.
 Additionally we see some outliers, but none of the seem to strongly influence the mean of the category, except 1919-1944 which shows a mean skewed towards the outlier.
 
@@ -241,7 +237,7 @@ plot_numeric_variable_with_transformation <- function(data, column_name, target_
   plot <- ggarrange(
     hist_plot_original,boxplot_original,relationship_plot_original,
     hist_plot_transformed,boxplot_transformed,relationship_plot_transformed,
-    ncol = 3, nrow = 2,widths = c(0.5,0.5,1)
+    ncol = 3, nrow = 2,widths = c(0.5,0.3,1)
   )
   
   # Add title to the combined plot
@@ -254,8 +250,15 @@ plot_numeric_variable_with_transformation <- function(data, column_name, target_
 }
 
 ```
+
 ```{r fig.width=11.7, fig.height=8.3/2, out.width="100%", dpi=300}
 plot_numeric_variable_with_transformation(data,"dseitz","werr")
+```
+After applying the Square root transformation we can see in the boxplot that the data is now more organised around the median value.
+Comparing the individual medians in the categories of the target variable shows some improvements in the distribution.
+There is still one outlier in the  1919-1944 category which might be good to remove.
+
+```{r}
 # Perform Shapiro-Wilk test before transformation
 shapiro_before <- shapiro.test(data$dseitz)
 data_sqrt <- sqrt(data$dseitz)
@@ -269,7 +272,34 @@ shapiro_results <- data.frame(
 )
 kable(shapiro_results, caption = "Shapiro-Wilk Normality Test Results", digits = 5)
 ```
-After applying the 
+Using the Shapiro-Wilk Normality Test we can show that we improved the normality of the data by some degree by comparing the W-Value.
+By transforming we were able to increase the W-value closer to 1.
+
+While building the model, we will try the transformend variable as well and see how it influences the performance.
+
+### xminalt age of youngest child in the family (in years)
+```{r}
+summary(data$xminalt)
+sd(data$xminalt)
+```
+The variable shows a wide spread, high variability, and a right-skewed distribution. The presence of a very high maximum value (469) compared to Q3 (187.5) suggests possible outliers.
+
+
+```{r fig.width=11.7, fig.height=8.3/2, out.width="100%", dpi=300}
+plot_numeric_variable(data, "xminalt","werr","xminalt, age of youngest child in the family (in years)")
+```
+The histogram shows a left-skewed distribution, with many values concentrated at the higher end (close to 20 years).
+The boxplot confirms this skewness, as the median is closer to the upper quartile.
+A sharp spike at 20 years suggests a possible ceiling effect or rounding in data collection.
+
+The whiskers extend further toward lower values, and some outliers appear at the lower end (0-5 years).
+
+
+The boxplots by groups of werr indicate variations in child age distribution across different categories.
+Some groups (e.g., 1961-1970) show more lower-end outliers, while others (before 1919, 1981-1990) have higher medians.
+This suggests that the age of the youngest child may have a meaningful relationship with the target variable.
+
+
 ```{r}
 
 pair_data <- data[,data.numeric]
@@ -278,130 +308,121 @@ ggpairs(pair_data,
         diag = list(continuous = "densityDiag"), # Density plots on the diagonal
         upper = list(continuous = "cor")) # Add correlation coefficients on the upper panel
 ```
+{{< pagebreak >}}
+### Relationship between numerical and Categorical variables
+#### **dseitz ~ balt5** Relation ship between dseitz: working in the current job since. . . (in months) and age category"
+```{r fig.width=11.7, out.width="100%", dpi=300}
+library(knitr)
 
+# Compute count and percentage
+freq_table <- data %>%
+  group_by(balt5) %>%
+  summarise(Count = n()) %>%
+  mutate(Percentage = round((Count / sum(Count)) * 100, 1))  # Calculate percentage
 
-#### **Examine Outliers**
+freq_table_wide <- freq_table %>%
+  pivot_longer(cols = c(Count, Percentage), 
+               names_to = "Metric", 
+               values_to = "Value") %>%
+  pivot_wider(names_from = balt5, values_from = Value) %>%
+  dplyr::select(Metric, everything())  # Ensure 'Metric' is first
 
-```{r fig.width=11.7, fig.height=8.3/2, out.width="100%", dpi=300}
-#| echo: false
-# Load required libraries
-library(ggplot2)
-library(ggpubr)
+# Print the table as a kable
+kable(freq_table_wide, format = "html", caption = "Age Group Count and Percentage")
 
-# Define the function to compare transformations
-plot_numeric_variable_with_transformation <- function(data, column_name, target_variable) {
+```
+
+``````{r fig.width=11.7, fig.height=8.3/2, out.width="100%", dpi=300}
+
+counts <- data %>%
+  group_by(balt5) %>%
+  summarise(count = n())
+# Histogram with density line
+relationship_plot <- ggplot(data, aes_string(x = "balt5", y = "dseitz")) +
+    geom_boxplot() +
+    labs( x= "",y = "dseitz") +
+   # ggtitle("relationship between dseitz and balt5") +
+    theme_grey() +
+    scale_colour_grey() +
+    scale_fill_grey()
+
+violinplot <- ggplot(data, aes(x = balt5, y = dseitz)) +
+  geom_violin()+
+  theme_grey() +
+  theme(plot.margin = margin(b = 0))+
+  scale_colour_grey() +
+  scale_fill_grey()
+
+plot <- ggarrange(relationship_plot, violinplot, ncol = 1, nrow = 2, heights = c(0.5,0.5))
+# Add title to the combined plot
+  plot_with_title <- annotate_figure(
+  plot,
+  top = text_grob(paste("Relation ship between dseitz: working in the current job since. . . (in months) and age category"), 
+  face = "bold", size = 14))
+
+plot_with_title
   
-  # Original Histogram with density line
-  hist_plot_original <- ggplot(data, aes_string(x = column_name)) +
-    geom_histogram(aes(y = ..density..), bins = 30) +
-    geom_density() +
-    labs(x = "Data", y = "Density (Original)") +
-    theme_grey() +
-    scale_colour_grey()
-  
-  # Original Boxplot
-  boxplot_original <- ggplot(data, aes_string(y = column_name)) +
-    geom_boxplot() +
-    xlim(-1, 1) +
-    labs(y = "Data (Original)") +
-    theme_grey() +
-    scale_colour_grey() +
-    scale_fill_grey()
+```
 
-  # Apply transformation (sqrt in this case)
-  data_transformed <- data
-  data_transformed[[paste0(column_name, "_sqrt")]] <- sqrt(data[[column_name]])
 
-  # Transformed Histogram with density line
-  hist_plot_transformed <- ggplot(data_transformed, aes_string(x = paste0(column_name, "_sqrt"))) +
-    geom_histogram(aes(y = ..density..), bins = 30) +
-    geom_density() +
-    labs(x = "Data", y = "Density (Transformed)") +
-    theme_grey() +
-    scale_colour_grey()
+The median dseitz (job tenure) increases as age increases, which is expected since older employees generally have had more time to accumulate tenure.
+Young employees tend to switch jobs more frequently or have just entered the workforce, leading to lower and less variable tenures.
+Middle-aged employees exhibit the most variation in tenure, possibly due to career shifts, promotions, or industry differences.
+Older employees generally have longer tenures and less variation, indicating job stability and experience accumulation.
 
-  # Transformed Boxplot
-  boxplot_transformed <- ggplot(data_transformed, aes_string(y = paste0(column_name, "_sqrt"))) +
-    geom_boxplot() +
-    xlim(-1, 1) +
-    labs(y = "Data (Transformed)") +
-    theme_grey() +
-    scale_colour_grey() +
-    scale_fill_grey()
+This suggests that it might be beneficial to regroup the age groups into three bigger categories.
 
-  # Relationship Plot (Original)
-  relationship_plot_original <- ggplot(data, aes_string(x = target_variable, y = column_name)) +
-    geom_boxplot() +
-    labs(x = target_variable, y = column_name) +
-    theme_grey() +
-    scale_colour_grey() +
-    scale_fill_grey()
 
-  # Relationship Plot (Transformed)
-  relationship_plot_transformed <- ggplot(data_transformed, aes_string(x = target_variable, y = paste0(column_name, "_sqrt"))) +
-    geom_boxplot() +
-    labs(x = target_variable, y = paste0(column_name, " (Transformed)")) +
-    theme_grey() +
-    scale_colour_grey() +
-    scale_fill_grey()
+#### **dseitz ~ bfst** Relation ship between dseitz: working in the current job since. . . (in months) and family status")
+```{r fig.width=11.7, out.width="100%", dpi=300}
+library(knitr)
 
-  # Arrange all six plots in a grid (before and after transformation, both distributions and relationships)
+# Compute count and percentage
+freq_table <- data %>%
+  group_by(bfst) %>%
+  summarise(Count = n()) %>%
+  mutate(Percentage = round((Count / sum(Count)) * 100, 1))  # Calculate percentage
 
-  plot <- ggarrange(
-    hist_plot_original,boxplot_original,relationship_plot_original,
-    hist_plot_transformed,boxplot_transformed,relationship_plot_transformed,
-    ncol = 3, nrow = 2,widths = c(0.5,0.5,1)
-  )
-  
-  # Add title to the combined plot
-  plot_with_title <- annotate_figure(plot, 
-    top = text_grob(paste("Comparison of Original and Transformed (sqrt) Data",column_name), 
-    face = "bold", size = 14,))
+freq_table_wide <- freq_table %>%
+  pivot_longer(cols = c(Count, Percentage), 
+               names_to = "Metric", 
+               values_to = "Value") %>%
+  pivot_wider(names_from = bfst, values_from = Value) %>%
+  dplyr::select(Metric, everything())  # Ensure 'Metric' is first
 
-  # Return the plot with title
-  return(plot_with_title)
-}
+# Print the table as a kable
+kable(freq_table_wide, format = "html", caption = "family status Count and Percentage")
 
 ```
 
 ```{r fig.width=11.7, fig.height=8.3/2, out.width="100%", dpi=300}
-plot_numeric_variable_with_transformation(data,"dseitz","werr")
-plot_numeric_variable_with_transformation(data,"dstd","werr")
-plot_numeric_variable_with_transformation(data,"kjahr","werr")
-plot_numeric_variable_with_transformation(data,"xanzkind","werr")
+# Histogram with density line
+relationship_plot <- ggplot(data, aes_string(y = "dseitz", x = "bfst")) +
+    geom_boxplot() +
+    labs(y = "dseitz" , x = "bfst") +
+   # ggtitle("relationship between dseitz and balt5") +
+    theme_grey() +
+    scale_colour_grey() +
+    scale_fill_grey()
+
+violinplot <- ggplot(data, aes(x = bfst, y = dseitz)) +
+  geom_violin()+
+  theme_grey() +
+  scale_colour_grey() +
+  scale_fill_grey()
+
+plot <- ggarrange(relationship_plot, violinplot, ncol = 1, nrow = 2, widths = c(0.5,0.5))
+# Add title to the combined plot
+  plot_with_title <- annotate_figure(
+  plot,
+  top = text_grob(paste("Relation ship between dseitz: working in the current job since. . . (in months) and family status"), 
+  face = "bold", size = 14))
+
+plot_with_title
 ```
+#### '**xminalt ~ bfst** age of youngest child in the family (in years) and age category"
 
-#### **Consider Transformations for Normality**
-
-
-```{r fig.width=11.7, fig.height=8.3/2, out.width="100%", dpi=300}
-# Function to remove outliers and compare distributions
-remove_outliers_IQR <- function(data, column_name) {
-  
-  # Step 1: Identify Outliers using IQR
-  Q1 <- quantile(data[[column_name]], 0.25)
-  Q3 <- quantile(data[[column_name]], 0.75)
-  IQR <- Q3 - Q1
-  lower_bound <- Q1 - 1.5 * IQR
-  upper_bound <- Q3 + 1.5 * IQR
-  
-  # Step 2: Create a new column 'is_outlier' to indicate outliers
-  data$is_outlier <- ifelse(data[[column_name]] < lower_bound | data[[column_name]] > upper_bound, TRUE, FALSE)
-  
-  # Step 3: Remove the outliers by filtering the rows where 'is_outlier' is FALSE
-  data_no_outliers <- data[data$is_outlier == FALSE, ]
-  
-  # Step 4: Return the dataset without outliers (with the 'is_outlier' column still present)
-  return(data_no_outliers)
-}
-
-temp_data <- remove_outliers_IQR(data, "dstd")
-temp_data
-plot_numeric_variable_with_transformation(data,"dstd","werr")
-plot_numeric_variable_with_transformation(temp_data,"dstd","werr")
-
-```
-
+<<<<<<< HEAD
 ## Categorical Variables
 
 ```{r}
@@ -529,11 +550,57 @@ ggplot(data, aes(x = xhatlevel)) +
 
 
 2.1.1 Introduction \[20\]
+```{r fig.width=11.7, fig.height=8.3/2, out.width="100%", dpi=300}
+# Histogram with density line
+relationship_plot <- ggplot(data, aes_string(y = "xminalt", x = "balt5")) +
+    geom_boxplot() +
+    labs(y = "xminalt" , x = "balt5") +
+   # ggtitle("relationship between dseitz and balt5") +
+    theme_grey() +
+    scale_colour_grey() +
+    scale_fill_grey()
 
-• Formulate research questions (see chapter 2.4.1 of the Meyer/Wurzer script) and research hypotheses, based on the predictors you selected
+violinplot <- ggplot(data, aes(x = balt5, y = xminalt)) +
+  geom_violin()+
+  theme_grey() +
+  scale_colour_grey() +
+  scale_fill_grey()
 
-• Motivate the selection of the predictors - what was the reason for choosing them? • Describe starting point and objectives of your analysis • State the regression method you will use for your analysis (binary logistic, ordinal logistic, Poisson, . . . ) and justify your decision
+plot <- ggarrange(relationship_plot, violinplot, ncol = 1, nrow = 2, widths = c(0.5,0.5))
+# Add title to the combined plot
+  plot_with_title <- annotate_figure(
+  plot,
+  top = text_grob(paste("xminalt, age of youngest child in the family (in years) and age category"), 
+  face = "bold", size = 14))
 
-2.1.2 Data collection \[10\] • Type of survey; facts concerning the execution of the survey (period etc.) ????? • Description of the data set/operationalization (type of sample, sample size, variables, scale levels, missing values etc.) • Data preparation (missing value treatment, transformations, . . . )
+plot_with_title
+```
+The higer the age group, the older the jungest child gets with some outlier.
+We see that it makes sence to combine some 
 
-2.1.3 Descriptive analysis of the sample \[70\] • Descriptive analysis of the analyzed variable(s) – Diagrams, numerical measures, tables, . . . – All statistics have to be commented, in particular diagrams! – Are there any distinctive features? (e.g., group differences, trends, outliers, . . . ) • In detail, the following plots have to be produced: – Univariate visualizations of all variables – Bivariate relationships between predictors and response to show the influence of the former on the latter – Joint influences of all possible pairs of predictors on the response to show potential interactions (exception: the interaction between the two metric variables doesn’t have to be visualized) • Summary of the descriptive analysis. Based on these descriptive findings, segue to the analysis of the questions about the population
+#### xminalt ~ bfsft
+```{r fig.width=11.7, fig.height=8.3/2, out.width="100%", dpi=300}
+# Histogram with density line
+relationship_plot <- ggplot(data, aes_string(y = "xminalt", x = "bfst")) +
+    geom_boxplot() +
+    labs(y = "xminalt" , x = "bfst") +
+   # ggtitle("relationship between dseitz and balt5") +
+    theme_grey() +
+    scale_colour_grey() +
+    scale_fill_grey()
+
+violinplot <- ggplot(data, aes(x = bfst, y = xminalt)) +
+  geom_violin()+
+  theme_grey() +
+  scale_colour_grey() +
+  scale_fill_grey()
+
+plot <- ggarrange(relationship_plot, violinplot, ncol = 1, nrow = 2, widths = c(0.5,0.5))
+# Add title to the combined plot
+  plot_with_title <- annotate_figure(
+  plot,
+  top = text_grob(paste("xminalt, age of youngest child in the family (in years) and family status"), 
+  face = "bold", size = 14))
+
+plot_with_title
+```
