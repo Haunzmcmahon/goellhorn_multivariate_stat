@@ -443,12 +443,14 @@ ggplot(data, aes(x = balt5, fill = werr)) +
 # Create a clustered bar chart for 'bsex' and 'werr'
 ggplot(data, aes(x = bsex, fill = werr)) +
   geom_bar(position = "dodge") +  # Clustered bar chart
-  scale_fill_viridis_d(option = "plasma") +  # Gradual color scale
+  scale_colour_grey() +
+    scale_fill_viridis_d(option = "plasma") +  # Gradual color scale
   labs(title = "Construction Period Distribution by Gender",
        x = "Gender",
        y = "Count",
        fill = "Construction Period") +
   theme_minimal() +
+  theme_grey() +
   theme(axis.text.x = element_text(angle = 0, hjust = 0.5))  # Horizontal labels for clarity
 
 ```
@@ -469,12 +471,60 @@ print(chi_square_test)
 p-value = 0.9221: Since the p-value is much larger than the common significance level of 0.05,the construction period distribution is not significantly different between males and females in your dataset.
 
 ```{r}
-# Remove rows and columns with zero counts
-contingency_table_bfst_clean <- contingency_table_bfst[rowSums(contingency_table_bfst) > 0, 
-                                                       colSums(contingency_table_bfst) > 0]
+ggplot(data, aes(x = bfst)) +
+  geom_bar(aes(y = (..count..) / sum(..count..) * 100), fill = "steelblue") +
+  labs(title = "Distribution of Marital Status", x = "Marital Status", y = "Percentage") +
+  theme_minimal() +
+  theme_grey() +
+  scale_y_continuous(labels = scales::percent_format(scale = 1))
+```
+```{r}
+summary(data$xbstaat)
+```
 
-print(contingency_table_bfst_clean)
-mosaic(contingency_table_bfst_clean, shade = TRUE, legend = TRUE)
+```{r}
+# Bar plot of counts for 'xbstaat' by 'werr'
+ggplot(data, aes(x = xbstaat, fill = werr)) + 
+  geom_bar(position = "dodge") +
+  labs(title = "Distribution of Country of Origin by Construction Period ('werr')",
+       x = "Country of Origin ('xbstaat')",
+       y = "Count") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))  # Rotate x-axis labels for readability
+
+```
+
+```{r fig.width=11.7, fig.height=8.3/2, out.width="100%", dpi=300}
+# Bar plot of counts for 'xbgeblan' by 'werr'
+ggplot(data, aes(x = werr, fill = xbgeblan )) + 
+  geom_bar(position = "dodge") +
+  labs(title = "Distribution of Ethnic/National Background by Construction Period ('werr')",
+       x = "Ethnic/National Background ('xbgeblan')",
+       y = "Count") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))  # Rotate x-axis labels for readability
+
+```
+```{r}
+summary(data$xbgeblan)
+```
+```{r}
+summary(data$xhatlevel)
+```
+
+```{r}
+# Bar plot for xhatlevel (Education Level)
+ggplot(data, aes(x = xhatlevel)) +
+  geom_bar(fill = "steelblue") +
+  labs(title = "Distribution of Education Level",
+       x = "Education Level (xhatlevel)",
+       y = "Count") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))  # Rotate x-axis labels for readability
+
+
+
+
 ```
 
 
