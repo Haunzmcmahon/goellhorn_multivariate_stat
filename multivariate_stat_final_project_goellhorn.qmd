@@ -1,5 +1,6 @@
 ---
-title: "project"
+title: "Multivariate statistics - Microcensus report"
+author: "Lukas Aichhorn, Johannes Gölles"
 format:
   pdf:
     toc: true
@@ -32,11 +33,91 @@ library(vcd)
 ```
 # Introduction
 
-# Setting up our relevant dataset:
+In this report, we focus on analyzing the factors influencing the construction year of buildings across different time periods. The dataset used for this analysis consists exclusively of households from Styria, Austria's 2nd largest state behind Lower Austria. 
+
+The goal of this report is to explore the relationship between various socio-economic factors and the construction year of buildings (werr). In order to achieve this, we selected four predictors: **job tenure (dseitz)**, **age of the youngest child (xminalt)**, **age category (balt5)**, and **family status (bfst)**. 
+
+
+
+## Motivation behind predictor selection
+
+The four predictors were chosen to reflect key aspects of household dynamics that could potentially influence housing preferences and the time of construction. 
+
+**Job tenure** captures the stability of the household's employment situation, which may be linked to the decision-making process around housing. 
+
+**The age of the youngest child** provides insights into the family's stage in the life cycle, which could affect housing preferences, particularly regarding the age of the home. 
+
+**Age category** reflects the demographic profile of household members, while **family status** provides an indication of the household's familial structure, which may impact both the choice of residence and the likelihood of living in newer or older buildings. 
+
+By analyzing these predictors, we aim to uncover patterns that shed light on how various demographic and economic factors influence housing choices in Styria.
+
+## Research questions and hypotheses
+
+This section formulates the research questions and hypotheses that guide our analysis of how job tenure, family structure, and age-related characteristics influence the likelihood of living in buildings from different construction periods. Given that our data is limited to households in Styria, we specifically examine the individual and combined effects of job tenure (dseitz), the age of the youngest child (xminalt), age category (balt5), and family status (bfst) on the construction period of residential buildings (werr).
+
+### 1st Research question
+
+*'How do job tenure (dseitz), the age of the youngest child (xminalt), age category (balt5), and family status (bfst) collectively influence the likelihood of Styrians living in buildings from different construction periods (werr)?'*
+
+This question examines how all predictors contribute to determining the construction year of the building, considering potential interactions between job tenure, family structure, and age.
+
+### Hypotheses 1st research question
+
+Null Hypothesis (H₀): The predictors dseitz, xminalt, balt5, and bfst, both individually and in combination, have no significant effect on the construction period of the building (werr).
+
+Alternative Hypothesis (H₁): At least one of the predictors or their interactions has a significant effect on the construction period of the building (werr).
+
+### 2nd Research question
+
+*'Does the interaction between family status (bfst), age category (balt5), the age of the youngest child (xminalt), and family status (bfst) influence the likelihood of Styrian households living in buildings constructed before or after 2000 (werr)?'*
+
+This question focuses on how our predictors interact to shape housing choices, particularly around the boundary of the year 2000, which could be a key cutoff in housing trends.
+
+### Hypotheses 2nd research question
+
+Null Hypothesis (H₀): The predictors dseitz, xminalt, balt5, and bfst, both individually and in combination, do not significantly influence the likelihood of living in houses older or newer than 25 years (werr = 2000).
+
+Alternative Hypothesis (H₁): At least one of the predictors or their interactions significantly affect the likelihood of living in a house older or younger than 25 years (werr = 2000).
+
+## Starting point
+
+Understanding the factors that influence residential choices and housing conditions is essential for assessing demographic and socioeconomic trends. This study investigates whether job tenure, family structure, and age-related factors play a role in determining the construction period of residential buildings in Styria. By analyzing these relationships, we aim to uncover potential patterns that could inform housing policy and urban development strategies.
+
+## Regression method
+
+For this analysis, we will use ordinal logistic regression since the response variable, werr (construction period of the building), is ordinal in nature. The categories represent sequential time periods, making an ordinal model more appropriate than a standard multinomial logistic regression, which would disregard the inherent ordering.
+
+Ordinal logistic regression allows us to estimate how the predictors—job tenure (dseitz), age of the youngest child (xminalt), age category (balt5), and family status (bfst)—affect the likelihood of living in buildings from different construction periods while preserving the ordinal structure of the dependent variable. This method also enables the inclusion of interactions to examine whether combined demographic factors influence housing conditions differently.
+
+Alternative approaches, such as binary logistic regression, would require collapsing the categories into two groups, leading to information loss, while Poisson regression is not suitable since the response variable is categorical rather than a count.
+
+# Data collection
+
+## Type of survey
+
+The data originates from a structured household survey conducted in Styria, focusing on demographic, employment, and housing characteristics. The survey follows a standardized questionnaire format, ensuring consistency across responses. Participants provided information about their family composition, employment history, and housing conditions, allowing for a comprehensive analysis of potential influences on residential buildings' construction periods. According to **'Statistics Austria'**, every quarter, 22 500 households are selected for the survey. They are randomly drawn from the Central Residence Register (ZMR). Within ten years a private household can be surveyed in up to five consecutive calendar quarters.
+
+(https://www.statistik.at/en/about-us/surveys/individual-and-household-surveys/microcensus#:~:text=The%20microcensus%20ensures%20up%2Dto,Central%20Residence%20Register%20(ZMR).)
+
+## Description of data set
 
 ```{r}
 data_loc = "mc.csv"
 data <- read.csv(data_loc)
+
+str(data)
+
+```
+
+As stated in the introduction, this report is based on Microcensus data, which originally consists of 27 variables stored as integers and 9,287 rows. While all variables are initially represented numerically, closer examination reveals that many are categorical in nature (e.g., bsex, xbstaat). In the next section, all variables will be converted to their appropriate data types.
+
+## Data preparation
+
+The first step of this report was the data preparation. Since NA values in the microcensus dataset were represented as '-3' we replaced them with NA in order to be able to later remove them using na.omit(). 
+
+Additionally we filtered the data to only contain entries from our selected region Styria. Furthermore the categorical variables were transformed to factors. Our target variable( (werr) and one of our predictors (balt5) were modified to incorporate the ordinality of their respective values.
+
+```{r}
 #-3 values represent null values so we assing NA
 data[data == -3] <- NA
 #subset = styria -> NUTS2 = AT22
@@ -44,7 +125,7 @@ data <- data |> filter(xnuts2 == 22)
 #filtering only for the relevant Predictors
 data <- data |>dplyr::select(werr, dseitz, dstd, kjahr, xanzkind, xminalt,
             balt5, bsex,bfst, xbstaat, xbgeblan, xhatlevel, xeinw, xlfi,xpatch)
-head(data)
+#head(data)
 
 data <- data %>%
     mutate(
@@ -86,22 +167,29 @@ data <- data %>%
   )
 data <- na.omit(data)
 
-head(data)
+summary(data)
 ```
 
-```{r}
-data.numeric <-c("dseitz","dstd","kjahr","xanzkind")
-data.polytomous <- c("balt5","bfst","xbstaat","xbgeblan","xhatlevel","xeinw","xlfi")
-data.categorical <- c("balt5","bsex","bfst","xbstaat","xbgeblan","xhatlevel","xeinw","xlfi","xpatch")
-```
+This shows a short summary across all variables. Later on we will focus on the chosen predictors and their relationship with the target variable.
+
 {{< pagebreak >}}
 
 # Descriptice Analysis
 
+In this chapter, we will conduct a detailed descriptive analysis of the chosen predictors, focusing on understanding their individual characteristics and the relationships between them. The analysis will include visualizations and numerical summaries to describe the data and highlight any distinctive features, such as trends, outliers, or group differences.
+
+We will start by presenting univariate visualizations for each variable, providing insights into their distribution and central tendencies. Additionally, bivariate relationships between the predictors and the response variable will be explored to understand how the former influence the latter. In particular, we will examine the interaction effects between pairs of predictors and the response variable, allowing us to identify any potential dependencies.
+
+The visualizations will be complemented by detailed commentaries on all relevant statistics, focusing on distributions, and any note worthy findings from the plots.
+
+Finally, we will summarize the key insights from the descriptive analysis. This will serve as the foundation for the more formal inferential analyses to follow.
+
 ## Numeric Variables
 
+This helper function was added to be able to create side by side plots for univariate and bivariate analysis of the two numerical predictors **xminalt** and **dseitz**.
+
 ```{r}
-#| echo: false
+#| echo: true
 #| output: false
 # Define the function
 plot_numeric_variable <- function(data, column_name, target_variable,plot_title) {
@@ -149,26 +237,26 @@ plot_numeric_variable <- function(data, column_name, target_variable,plot_title)
 ```
 
 ### dseitz: working in the current job since. . . (in months)
+
+The first variable we will examine is 'dseitz', which represents job tenure, measured in months. This variable provides insight into the length of time individuals have spent in their current employment.
+
 ```{r}
-summary(data$seitz)
+summary(data$dseitz)
 sd(data$dseitz)
 ```
-Spread & Variability: Ranges from 0 to 469, with a high standard deviation (117.17), indicating significant dispersion.
-Central Tendency: Median = 95.5, Mean = 127.6 (higher than the median), suggesting right-skewness.
-Quartiles: Q1 = 29.5, Q3 = 187.5, with a large IQR (158), showing a wide spread.
-Shape: The high max (469) and right-skewed distribution suggest potential outliers.
+
+The distribution of the data exhibits considerable spread and variability, with values ranging from 0 to 469 and a high standard deviation of 117.17, indicating significant dispersion. The central tendency is characterized by a median of 95.5 and a mean of 127.6, with the mean being higher than the median, suggesting a right-skewed distribution. The interquartile range (IQR) is quite large, spanning from 29.5 (Q1) to 187.5 (Q3), with an IQR of 158, further emphasizing the wide spread of the data. The presence of a high maximum value of 469 also indicates potential outliers, reinforcing the right-skewness of the distribution.
+
 ```{r fig.width=11.7, fig.height=8.3/3, out.width="100%", dpi=300}
 #|warning: false
 plot_numeric_variable(data,
   "dseitz","werr","dseitz: working in the current job since. . . (in months)")
 ```
-The histogram shows that the variable follows a right-skewed distribution and has a high spread.
-Through the boxplot we see that most values are between 0 and 200 with some outliers above 400.
-The box plot categorized by the buildings-Year shows that the distribution of dseitz differs across the categories.
-Additionally we see some outliers, but none of the seem to strongly influence the mean of the category, except 1919-1944 which shows a mean skewed towards the outlier.
+The histogram indicates a right-skewed distribution of the variable, accompanied by a broad spread. The boxplot reveals that most values of 'dseitz' lie between 0 and 200 months, with a few outliers extending beyond 400 months. When categorized by building construction year, the boxplot highlights that the distribution of 'dseitz' varies across the different categories. While some outliers are present, they do not significantly affect the mean in most categories. However, the 1919-1944 category shows a mean that is skewed due to an outlier. The observed skewness and differing distributions across categories suggest that a transformation might be beneficial to better approximate a normal distribution.
 
-The skeweness and the different distributions throughout the categories might indicate that a transformation would help to conform more to a normal-distribution.
+### dseitz transformed (sqrt)
 
+Out of curiosity and because it might later be useful in the part for creating the statistical model, we transformed the variable using a simple square root transformation to see the effect on the distribution. 
 ```{r fig.width=11.7, fig.height=8.3/2, out.width="100%", dpi=300}
 #| echo: false
 # Load required libraries
@@ -251,12 +339,16 @@ plot_numeric_variable_with_transformation <- function(data, column_name, target_
 
 ```
 
+Another helper function was written to be able to easily compare the plots before and after transformation.
+
 ```{r fig.width=11.7, fig.height=8.3/2, out.width="100%", dpi=300}
 plot_numeric_variable_with_transformation(data,"dseitz","werr")
 ```
-After applying the Square root transformation we can see in the boxplot that the data is now more organised around the median value.
-Comparing the individual medians in the categories of the target variable shows some improvements in the distribution.
-There is still one outlier in the  1919-1944 category which might be good to remove.
+After applying the square root transformation to the 'dseitz' variable, we observe a noticeable improvement in the distribution, as shown in the updated boxplot. The transformed data is now more concentrated around the median, with a tighter range of values. In comparison to the original boxplot, the transformation has reduced the high variability and the extreme skewness, bringing the data closer to a more symmetrical distribution.
+
+When examining the medians across the categories of the target variable 'werr', the transformed data shows clearer and more consistent differences between categories, suggesting a more uniform distribution within each group. The individual medians appear more aligned, and the spread of values within each category has been reduced.
+
+However, despite these improvements, there is still an outlier present in the 1919-1944 category, which stands apart from the rest of the data. This outlier may still influence the overall distribution and could be worth considering for removal, as it is likely distorting the mean and contributing to the skewness observed in this category even after the transformation. Overall, the transformation has helped normalize the data, but addressing the outlier might further improve the analysis.
 
 ```{r}
 # Perform Shapiro-Wilk test before transformation
@@ -273,44 +365,102 @@ shapiro_results <- data.frame(
 kable(shapiro_results, caption = "Shapiro-Wilk Normality Test Results", digits = 5)
 ```
 Using the Shapiro-Wilk Normality Test we can show that we improved the normality of the data by some degree by comparing the W-Value.
-By transforming we were able to increase the W-value closer to 1.
 
-While building the model, we will try the transformend variable as well and see how it influences the performance.
+For the original data, the W-statistic is 0.88551, with a p-value of 0, which suggests that the original data deviates significantly from a normal distribution. The low W-statistic and extremely small p-value (essentially 0) indicate that the data is highly non-normal.
+
+After applying the square root transformation, the W-statistic increases to 0.97086, and the p-value becomes 4e-05. Although the p-value remains small, indicating some deviation from normality, the W-statistic is considerably higher, reflecting an improvement in the distribution's symmetry and reduced skewness. The transformation has resulted in a distribution that is closer to normal, but still exhibits slight deviations, as indicated by the p-value. Therefore, while the square root transformation improves the normality of the data, the distribution may still not fully conform to a normal distribution.
 
 ### xminalt age of youngest child in the family (in years)
 ```{r}
 summary(data$xminalt)
 sd(data$xminalt)
 ```
-The variable shows a wide spread, high variability, and a right-skewed distribution. The presence of a very high maximum value (469) compared to Q3 (187.5) suggests possible outliers.
+
+The variable 'xminalt', representing the age of the youngest child in the household, exhibits the following characteristics:
+
+Range: The values span from 0 to 21 years, indicating that some households have infants while others have adult children still living at home.
+
+Central Tendency: The median age is 15 years, slightly higher than the mean of 13.24, suggesting a slight skew toward younger ages.
+
+Quartiles: The first quartile (Q1) is 9, meaning that 25% of the households have their youngest child aged 9 or younger, while the third quartile (Q3) is 20, indicating that 75% of the youngest children are aged 20 or younger.
+
+Spread: The standard deviation is 6.68, reflecting moderate variability in the distribution of ages.
+
+The distribution suggests that most households have younger children, but there are some cases where the youngest child is already an adult.
 
 
 ```{r fig.width=11.7, fig.height=8.3/2, out.width="100%", dpi=300}
 plot_numeric_variable(data, "xminalt","werr","xminalt, age of youngest child in the family (in years)")
 ```
-The histogram shows a left-skewed distribution, with many values concentrated at the higher end (close to 20 years).
-The boxplot confirms this skewness, as the median is closer to the upper quartile.
-A sharp spike at 20 years suggests a possible ceiling effect or rounding in data collection.
 
-The whiskers extend further toward lower values, and some outliers appear at the lower end (0-5 years).
+The histogram reveals a left-skewed distribution, with most values clustered near 20 years and a sharp spike at this upper limit, possibly due to rounding. The boxplot confirms this skewness, with the median near the upper quartile and whiskers extending further toward lower values, where some outliers (0–5 years) appear.
+
+Boxplots by werr categories highlight differences in child age distribution, with some groups (e.g., 1961-1970) showing more lower-end outliers, while others (before 1919, 1981-1990) have higher medians. This suggests a potential relationship between xminalt and the construction period of the building.
+
+{{< pagebreak >}}
+
+## Categorical Variables
+
+```{r}
+# Bar plot of age group distribution
+ggplot(data, aes(x = balt5)) +
+  geom_bar(fill = "steelblue") +
+  labs(title = "Distribution of Age Groups",
+       x = "Age Group",
+       y = "Count") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))  # Rotate labels for readability
 
 
-The boxplots by groups of werr indicate variations in child age distribution across different categories.
-Some groups (e.g., 1961-1970) show more lower-end outliers, while others (before 1919, 1981-1990) have higher medians.
-This suggests that the age of the youngest child may have a meaningful relationship with the target variable.
+```
+
+The bar plot displays the frequency distribution of individuals across age groups. The majority fall within the 40-44 and 45-49 age brackets, with 44 and 39 individuals, respectively. The distribution shows a peak in middle-aged groups, gradually declining in older categories. Notably, there are no individuals aged 70 and above, and only one person in the 60-64 range, indicating a strong skew toward younger and middle-aged populations. The lack of representation in the youngest (0-14) and oldest (70+) categories may suggest a dataset focused on working-age individuals. 
+
 
 
 ```{r}
-
-pair_data <- data[,data.numeric]
-ggpairs(pair_data,
-        lower = list(continuous = "smooth"), # Smoothed scatterplots on the lower panel
-        diag = list(continuous = "densityDiag"), # Density plots on the diagonal
-        upper = list(continuous = "cor")) # Add correlation coefficients on the upper panel
+summary(data$balt5)
+#dropping levels without any entries from the dataset
+data$balt5 <- droplevels(data$balt5)
+summary(data$balt5)
 ```
-{{< pagebreak >}}
+```{r}
+ggplot(data, aes(x = balt5, fill = werr)) +
+  geom_bar(position = "fill") +  # Stacked proportionally
+  scale_fill_viridis_d(option = "plasma") +  # Gradual color transition
+  labs(title = "Distribution of Age Groups by Construction Period",
+       x = "Age Group",
+       y = "Proportion",
+       fill = "Construction Period") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))  # Rotate labels for readability
+
+```
+```{r}
+prop.table(table(data$balt5, data$werr), margin = 1)
+
+```
+
+This stacked barplot, along with the contingency table displaying proportions, illustrates the distribution of construction periods across the age groups with non-zero counts. It is evident that middle-aged individuals (between 30 and 40) disproportionately reside in newer houses, with around 35% living in houses built after 2000. Meanwhile, individuals over 40 are more likely to live in houses built in the 1990s or earlier. In contrast, people under thirty are spread across various construction periods, with no single group dominating—except among teenagers, where 33% reside in houses built in the 1990s. There is one single value in the group of 60-64 year old people which lives in a property built before 1919 which accounts for the 100% in this category.
+
+```{r}
+ggplot(data, aes(x = bfst)) +
+  geom_bar(aes(y = (..count..) / sum(..count..) * 100), fill = "steelblue") +
+  labs(title = "Distribution of Marital Status", x = "Marital Status", y = "Percentage") +
+  theme_minimal() +
+  theme_grey() +
+  scale_y_continuous(labels = scales::percent_format(scale = 1))
+```
+
+As visible in this barplot the majority of surveyants were either single or married and only a rather small percentage of the people in the survey are widowed or divorced (below 10% combined). This could lead to false assumptions in the model because the two major groups are so dominant in the dataset.
+
+
+
+
+
+
 ### Relationship between numerical and Categorical variables
-#### **dseitz ~ balt5** Relation ship between dseitz: working in the current job since. . . (in months) and age category"
+#### **dseitz ~ balt5** Relationship between dseitz: working in the current job since. . . (in months) and age category"
 ```{r fig.width=11.7, out.width="100%", dpi=300}
 library(knitr)
 
@@ -332,7 +482,9 @@ kable(freq_table_wide, format = "html", caption = "Age Group Count and Percentag
 
 ```
 
-``````{r fig.width=11.7, fig.height=8.3/2, out.width="100%", dpi=300}
+
+
+```{r fig.width=11.7, fig.height=8.3/2, out.width="100%", dpi=300}
 
 counts <- data %>%
   group_by(balt5) %>%
@@ -365,12 +517,7 @@ plot_with_title
 ```
 
 
-The median dseitz (job tenure) increases as age increases, which is expected since older employees generally have had more time to accumulate tenure.
-Young employees tend to switch jobs more frequently or have just entered the workforce, leading to lower and less variable tenures.
-Middle-aged employees exhibit the most variation in tenure, possibly due to career shifts, promotions, or industry differences.
-Older employees generally have longer tenures and less variation, indicating job stability and experience accumulation.
-
-This suggests that it might be beneficial to regroup the age groups into three bigger categories.
+The median job tenure (dseitz) increases with age, as older employees have had more time to build tenure. Younger employees show lower and less variable tenures, likely due to frequent job changes or being new to the workforce. Middle-aged employees display the greatest variation, possibly reflecting career shifts or promotions, while older employees tend to have longer, more stable tenures. This pattern suggests that regrouping the age groups into three broader categories may be beneficial.
 
 
 #### **dseitz ~ bfst** Relation ship between dseitz: working in the current job since. . . (in months) and family status")
@@ -394,6 +541,8 @@ freq_table_wide <- freq_table %>%
 kable(freq_table_wide, format = "html", caption = "family status Count and Percentage")
 
 ```
+
+This table again shows the very skewed distribution for family status in this dataset with less than one percent being widowed (2 individuals) and the majority married or single. 
 
 ```{r fig.width=11.7, fig.height=8.3/2, out.width="100%", dpi=300}
 # Histogram with density line
@@ -420,136 +569,11 @@ plot <- ggarrange(relationship_plot, violinplot, ncol = 1, nrow = 2, widths = c(
 
 plot_with_title
 ```
+
+This combination of boxplot and violin plot illustrates the relationship between job tenure (in months) and family status. It shows that single and divorced individuals generally have lower job tenure, while married—and to a lesser extent, widowed—individuals tend to have longer tenures. The plots reveal that married individuals exhibit a higher median tenure and a broader range, suggesting both long-term stability and recent entry into their positions, whereas the distributions for single and divorced groups are more concentrated at lower values with fewer long-term outliers.
+
 #### '**xminalt ~ bfst** age of youngest child in the family (in years) and age category"
 
-<<<<<<< HEAD
-## Categorical Variables
-
-```{r}
-# Bar plot of age group distribution
-ggplot(data, aes(x = balt5)) +
-  geom_bar(fill = "steelblue") +
-  labs(title = "Distribution of Age Groups",
-       x = "Age Group",
-       y = "Count") +
-  theme_minimal() +
-  theme(axis.text.x = element_text(angle = 45, hjust = 1))  # Rotate labels for readability
-
-
-```
-
-```{r}
-summary(data$balt5)
-#dropping levels without any entries from the dataset
-data$balt5 <- droplevels(data$balt5)
-summary(data$balt5)
-```
-```{r}
-ggplot(data, aes(x = balt5, fill = werr)) +
-  geom_bar(position = "fill") +  # Stacked proportionally
-  scale_fill_viridis_d(option = "plasma") +  # Gradual color transition
-  labs(title = "Distribution of Age Groups by Construction Period",
-       x = "Age Group",
-       y = "Proportion",
-       fill = "Construction Period") +
-  theme_minimal() +
-  theme(axis.text.x = element_text(angle = 45, hjust = 1))  # Rotate labels for readability
-
-```
-
-
-
-
-```{r}
-# Create a clustered bar chart for 'bsex' and 'werr'
-ggplot(data, aes(x = bsex, fill = werr)) +
-  geom_bar(position = "dodge") +  # Clustered bar chart
-  scale_colour_grey() +
-    scale_fill_viridis_d(option = "plasma") +  # Gradual color scale
-  labs(title = "Construction Period Distribution by Gender",
-       x = "Gender",
-       y = "Count",
-       fill = "Construction Period") +
-  theme_minimal() +
-  theme_grey() +
-  theme(axis.text.x = element_text(angle = 0, hjust = 0.5))  # Horizontal labels for clarity
-
-```
-
-```{r}
-# Create a contingency table of gender (bsex) and construction period (werr)
-contingency_table_gender <- table(data$bsex, data$werr)
-
-print(contingency_table_gender)
-
-# Perform the Chi-square test
-chi_square_test <- chisq.test(contingency_table)
-
-# View the result
-print(chi_square_test)
-
-```
-p-value = 0.9221: Since the p-value is much larger than the common significance level of 0.05,the construction period distribution is not significantly different between males and females in your dataset.
-
-```{r}
-ggplot(data, aes(x = bfst)) +
-  geom_bar(aes(y = (..count..) / sum(..count..) * 100), fill = "steelblue") +
-  labs(title = "Distribution of Marital Status", x = "Marital Status", y = "Percentage") +
-  theme_minimal() +
-  theme_grey() +
-  scale_y_continuous(labels = scales::percent_format(scale = 1))
-```
-```{r}
-summary(data$xbstaat)
-```
-
-```{r}
-# Bar plot of counts for 'xbstaat' by 'werr'
-ggplot(data, aes(x = xbstaat, fill = werr)) + 
-  geom_bar(position = "dodge") +
-  labs(title = "Distribution of Country of Origin by Construction Period ('werr')",
-       x = "Country of Origin ('xbstaat')",
-       y = "Count") +
-  theme_minimal() +
-  theme(axis.text.x = element_text(angle = 45, hjust = 1))  # Rotate x-axis labels for readability
-
-```
-
-```{r fig.width=11.7, fig.height=8.3/2, out.width="100%", dpi=300}
-# Bar plot of counts for 'xbgeblan' by 'werr'
-ggplot(data, aes(x = werr, fill = xbgeblan )) + 
-  geom_bar(position = "dodge") +
-  labs(title = "Distribution of Ethnic/National Background by Construction Period ('werr')",
-       x = "Ethnic/National Background ('xbgeblan')",
-       y = "Count") +
-  theme_minimal() +
-  theme(axis.text.x = element_text(angle = 45, hjust = 1))  # Rotate x-axis labels for readability
-
-```
-```{r}
-summary(data$xbgeblan)
-```
-```{r}
-summary(data$xhatlevel)
-```
-
-```{r}
-# Bar plot for xhatlevel (Education Level)
-ggplot(data, aes(x = xhatlevel)) +
-  geom_bar(fill = "steelblue") +
-  labs(title = "Distribution of Education Level",
-       x = "Education Level (xhatlevel)",
-       y = "Count") +
-  theme_minimal() +
-  theme(axis.text.x = element_text(angle = 45, hjust = 1))  # Rotate x-axis labels for readability
-
-
-
-
-```
-
-
-2.1.1 Introduction \[20\]
 ```{r fig.width=11.7, fig.height=8.3/2, out.width="100%", dpi=300}
 # Histogram with density line
 relationship_plot <- ggplot(data, aes_string(y = "xminalt", x = "balt5")) +
@@ -575,8 +599,14 @@ plot <- ggarrange(relationship_plot, violinplot, ncol = 1, nrow = 2, widths = c(
 
 plot_with_title
 ```
-The higer the age group, the older the jungest child gets with some outlier.
-We see that it makes sence to combine some 
+This analysis explores the relationship between xminalt (age of the youngest child) and balt5 (age group of the parent).
+Younger parents (15-29 years) tend to have a wider spread of youngest child ages, with some having older children.
+Middle-aged parents (30-44 years) are more likely to have younger children, as indicated by lower medians.
+Older parents (50+ years) predominantly have older youngest children, with few cases of very young children.
+The violin plots suggest bimodal distributions in certain age groups (20-24, 50-54), indicating two distinct patterns.
+
+
+Overall, the data aligns with expected parental age-child age trends, with younger parents having more variation and older parents having consistently older youngest children.
 
 #### xminalt ~ bfsft
 ```{r fig.width=11.7, fig.height=8.3/2, out.width="100%", dpi=300}
@@ -604,3 +634,104 @@ plot <- ggarrange(relationship_plot, violinplot, ncol = 1, nrow = 2, widths = c(
 
 plot_with_title
 ```
+
+The violin plot displays the distribution of xminalt across different categories, excluding the "Widowed" group. The Single category shows a concentration of values primarily in the 15 to 20 range, indicating a peak in this region. In contrast, the Married category exhibits a high density of values at the upper end, followed by a gradual and even decline, suggesting a steady tapering of the distribution. The Widowed category has only values above 19, indicating a single-point distribution.
+
+# Joint influences
+
+Each subplot highlights a different house construction period, showing how one categorical variable are distributed against a numeric one. The red points represent individuals whose houses were built in the corresponding period.
+
+## Joint influence of bfst ~ dseitz on the Target variable Werr
+```{r fig.width=11.7, fig.height=8.3, out.width="100%", dpi=300}
+# Unique categories in 'werr'
+categories <- unique(data$werr)
+
+# Create a plot for each category
+plots <- lapply(categories, function(cat) {
+  ggplot(data, aes(x = dseitz, y = bfst, color = as.factor(werr))) +
+    geom_jitter(width = 0.1, height = 0.1, size = 1,,alpha = 0.5) +
+    scale_color_manual(values = ifelse(categories == cat, "red", "grey")) +
+    ggtitle(paste("Highlighting:", cat)) +
+    theme_grey()+
+  theme(legend.position = "none")
+})
+
+# Print plots
+ggarrange(plotlist = plots, ncol = 3, nrow = 3)
+```
+1971-1980 and 1945-1960 1961-1970 have a high concentration in being married or single with a wide spread especially in the Married category.
+1981-1990 shows a value concentration in the lower left.
+All Other Target Categories show no distinct pattern of distribution.
+
+## Joint influence of bfst ~ xminalt on the Target variable Werr
+```{r fig.width=11.7, fig.height=8.3, out.width="100%", dpi=300}
+# Ensure that the levels of werr are consistent with the facet variable
+# Unique categories in 'werr'
+categories <- unique(data$werr)
+
+# Create a plot for each category
+plots <- lapply(categories, function(cat) {
+  ggplot(data, aes(x = xminalt, y = bfst, color = as.factor(werr))) +
+    geom_jitter(width = 0.1, height = 0.1, size = 1,,alpha = 0.5) +
+    scale_color_manual(values = ifelse(categories == cat, "red", "grey")) +
+    ggtitle(paste("Highlighting:", cat)) +
+    theme_grey()+
+  theme(legend.position = "none")
+})
+
+# Print plots
+ggarrange(plotlist = plots, ncol = 3, nrow = 3)
+```
+
+1961-1970, 1945-1960 and 1971-1980 show a light orientation to a higher min age, with more values being in the Married category.
+most observation in the 1919-1944 are in the lower range of xmin alt between 0 and 10.
+
+## Joint influence of balt5 ~ dseitz on the Target variable Werr
+
+```{r fig.width=11.7, fig.height=8.3, out.width="100%", dpi=300}
+# Ensure that the levels of werr are consistent with the facet variable
+# Unique categories in 'werr'
+categories <- unique(data$werr)
+
+# Create a plot for each category
+plots <- lapply(categories, function(cat) {
+  ggplot(data, aes(x = dseitz, y = balt5, color = as.factor(werr))) +
+    geom_jitter(width = 0.1, height = 0.1, size = 1,,alpha = 0.5) +
+    scale_color_manual(values = ifelse(categories == cat, "red", "grey")) +
+    ggtitle(paste("Highlighting:", cat)) +
+    theme_grey()+
+  theme(legend.position = "none")
+})
+
+# Print plots
+ggarrange(plotlist = plots, ncol = 3, nrow = 3)
+```
+
+Pre-1919 buildings demonstrate pronounced clustering of long tenures (300-450 months) among older residents (50-64), indicating potential non-linear relationship between building age and tenure length.
+
+The 1981-1990 data reveals a distinct pattern for younger residents with shorter tenures, suggesting a potential interaction effect between younger age groups and this specific construction period.
+{{< pagebreak >}}
+## Joint influence of balt5 ~ xminalt on the Target variable Werr
+```{r fig.width=11.7, fig.height=8.3, out.width="100%", dpi=300}
+# Ensure that the levels of werr are consistent with the facet variable
+# Unique categories in 'werr'
+categories <- unique(data$werr)
+
+# Create a plot for each category
+plots <- lapply(categories, function(cat) {
+  ggplot(data, aes(x = xminalt, y = balt5, color = as.factor(werr))) +
+    geom_jitter(width = 0.1, height = 0.1, size = 1,,alpha = 0.5) +
+    scale_color_manual(values = ifelse(categories == cat, "red", "grey")) +
+    ggtitle(paste("Highlighting:", cat)) +
+    theme_grey()+
+  theme(legend.position = "none")
+})
+
+# Print plots
+ggarrange(plotlist = plots, ncol = 3, nrow = 3)
+```
+
+Older buildings (pre-1919) appear to house a more diverse age range of parents with children of various ages
+The 1970s show the most widespread distribution of highlighted family structures.
+More recent periods (post-2000) show a trend toward older parents with teenage children
+The periods 1981-2000 show notably fewer highlighted points than other periods, suggesting different demographic patterns during these construction eras
