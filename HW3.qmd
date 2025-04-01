@@ -1,0 +1,124 @@
+---
+title: "Untitled"
+title: "Homework 02 - Performance Assessment"
+author: "Lukas Aichhorn"
+date: "`r Sys.Date()`"
+format:
+  pdf:
+    documentclass: article
+    linestrech: 1.5
+    geometry: margin=1in
+    code-line-numbers: true
+    toc: true
+    toc-depth: 3
+    number-sections: true
+    colorlinks: true
+    highlight-style: github
+    df_print: kable
+    fig_caption: true
+    fig_height: 5
+    fig_width: 7
+    keep_tex: true
+    theme: cerulean
+header-includes:
+  - \usepackage{microtype}
+  - \usepackage{booktabs}
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE)
+```
+
+## Load Libraries
+```{r}
+library(tidyverse)  # For data manipulation and visualization
+library(class)      # For k-NN classification
+library(e1071)      # For Naive Bayes
+library(caret)      # For model evaluation
+library(pROC)       # For ROC curve analysis
+```
+
+## Load and Prepare Data
+```{r}
+# Load Census dataset
+census <- read.csv("census_data.csv")  # Ensure file exists in the working directory
+
+# Select relevant categorical features and target variable
+census <- census %>% 
+  select(Age, Education, MaritalStatus, Occupation, Relationship, Income) %>% 
+  na.omit()  # Remove missing values
+
+# Convert categorical variables to factors
+census <- census %>% mutate(across(where(is.character), as.factor))
+
+# Split into training (2/3) and testing (1/3) sets
+set.seed(123)  # Ensure reproducibility
+train_index <- createDataPartition(census$Income, p = 2/3, list = FALSE)
+train_data <- census[train_index, ]
+test_data  <- census[-train_index, ]
+```
+
+## Train k-NN Model
+```{r}
+# Tune k using 10-fold cross-validation
+set.seed(123)
+k_values <- seq(1, 21, by = 2)
+k_accuracies <- sapply(k_values, function(k) {
+  model <- train(Income ~ ., data = train_data, method = "knn", tuneGrid = data.frame(k = k), trControl = trainControl(method = "cv", number = 10))
+  max(model$results$Accuracy)
+})
+
+# Select best k
+best_k <- k_values[which.max(k_accuracies)]
+
+# Train final k-NN model
+knn_model <- knn(train = train_data[-ncol(train_data)], 
+                 test = test_data[-ncol(test_data)], 
+                 cl = train_data$Income, k = best_k)
+```
+
+## Train Naive Bayes Model
+```{r}
+nb_model <- naiveBayes(Income ~ ., data = train_data)
+nb_predictions <- predict(nb_model, test_data)
+```
+
+## Model Evaluation
+```{r}
+# Compute confusion matrices
+knn_cm <- confusionMatrix(factor(knn_model, levels = levels(train_data$Income)), test_data$Income)
+nb_cm <- confusionMatrix(nb_predictions, test_data$Income)
+
+# Compare Accuracy, Recall, Precision, and F1-score
+comparison <- tibble(
+  Model = c("k-NN", "Naive Bayes"),
+  Accuracy = c(knn_cm$overall["Accuracy"], nb_cm$overall["Accuracy"]),
+  Recall = c(knn_cm$byClass["Sensitivity"], nb_cm$byClass["Sensitivity"]),
+  Precision = c(knn_cm$byClass["Pos Pred Value"], nb_cm$byClass["Pos Pred Value"]),
+  F1_Score = c(knn_cm$byClass["F1"], nb_cm$byClass["F1"])
+)
+comparison
+```
+
+## ROC Curve for Naive Bayes
+```{r}
+nb_probs <- predict(nb_model, test_data, type = "raw")[, 2]  # Get probability scores
+roc_curve <- roc(test_data$Income, nb_probs)
+plot(roc_curve, main = "ROC Curve for Naive Bayes")
+```
+
+## Choosing an Optimal Threshold
+```{r}
+best_threshold <- coords(roc_curve, "best", ret = "threshold")
+new_predictions <- factor(ifelse(nb_probs > best_threshold, " >50K", " <=50K"), levels = levels(test_data$Income))
+new_cm <- confusionMatrix(new_predictions, test_data$Income)
+
+# Compare performance with the default threshold
+comparison <- bind_rows(comparison, tibble(
+  Model = "Naive Bayes (Optimized)",
+  Accuracy = new_cm$overall["Accuracy"],
+  Recall = new_cm$byClass["Sensitivity"],
+  Precision = new_cm$byClass["Pos Pred Value"],
+  F1_Score = new_cm$byClass["F1"]
+))
+comparison
